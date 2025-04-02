@@ -89,9 +89,9 @@ def print_logs_in_reverse_order(log_lines):
         print(log)
 
 if __name__ == '__main__':
-    log_path = 'data/mission_computer_main.log'
-    report_path = 'data/log_analysis.md'
-    problematic_log_path = 'data/problematic_logs.txt'
+    log_path = 'mission_computer_main.log'
+    report_path = 'log_analysis.md'
+    problematic_log_path = 'problematic_logs.txt'
 
     logs = read_log_file(log_path)
     sorted_logs = sort_logs_by_timestamp(logs)
