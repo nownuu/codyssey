@@ -8,7 +8,7 @@ import queue
 import zlib
 
 zip_file_path = "mission_11\emergency_storage_key.zip"
-password_file_path = "password.txt"
+password_file_path = "mission_11\password.txt"
 num_threads = 8  # CPU 코어 수에 따라 조절
 found_event = threading.Event()
 password_queue = queue.Queue()
