@@ -1,58 +1,66 @@
 import os
-import wave
-import datetime
-import pyaudio
+import csv
+import speech_recognition as sr
 
 
-def get_record_filename():
-    now = datetime.datetime.now()
-    filename = now.strftime('%Y%m%d-%H%M%S') + '.wav'
-    return os.path.join('records', filename)
+def get_audio_files(directory):
+    audio_files = []
+    for file_name in os.listdir(directory):
+        if file_name.endswith('.wav'):
+            audio_files.append(os.path.join(directory, file_name))
+    return audio_files
 
 
-def ensure_records_directory():
-    if not os.path.exists('records'):
-        os.makedirs('records')
+def transcribe_audio(file_path):
+    recognizer = sr.Recognizer()
+    audio_data = sr.AudioFile(file_path)
+    results = []
+
+    with audio_data as source:
+        audio = recognizer.record(source)
+        try:
+            text = recognizer.recognize_google(audio, show_all=False)
+            results.append((0.0, text))
+        except sr.UnknownValueError:
+            results.append((0.0, '음성 인식 실패'))
+        except sr.RequestError as e:
+            results.append((0.0, 'API 요청 실패: {0}'.format(e)))
+    return results
 
 
-def record_audio(duration_seconds=5):
-    chunk = 1024
-    format_type = pyaudio.paInt16
-    channels = 1
-    rate = 44100
+def save_transcription(file_path, transcription):
+    base_name = os.path.splitext(os.path.basename(file_path))[0]
+    csv_file = base_name + '.csv'
+    with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Time', 'Text'])
+        for time, text in transcription:
+            writer.writerow([time, text])
 
-    audio = pyaudio.PyAudio()
 
-    stream = audio.open(format=format_type,
-                        channels=channels,
-                        rate=rate,
-                        input=True,
-                        frames_per_buffer=chunk)
+def search_keyword_in_csv(directory, keyword):
+    for file_name in os.listdir(directory):
+        if file_name.endswith('.csv'):
+            with open(os.path.join(directory, file_name), mode='r', encoding='utf-8') as file:
+                reader = csv.reader(file)
+                next(reader)
+                for row in reader:
+                    if keyword in row[1]:
+                        print(f'[파일: {file_name}] 시간: {row[0]} 텍스트: {row[1]}')
 
-    print('Recording started...')
-    frames = []
 
-    for _ in range(0, int(rate / chunk * duration_seconds)):
-        data = stream.read(chunk)
-        frames.append(data)
+def main():
+    directory = 'audio'
+    audio_files = get_audio_files(directory)
 
-    print('Recording finished.')
+    for file_path in audio_files:
+        transcription = transcribe_audio(file_path)
+        save_transcription(file_path, transcription)
 
-    stream.stop_stream()
-    stream.close()
-    audio.terminate()
-
-    ensure_records_directory()
-    file_path = get_record_filename()
-
-    with wave.open(file_path, 'wb') as wf:
-        wf.setnchannels(channels)
-        wf.setsampwidth(audio.get_sample_size(format_type))
-        wf.setframerate(rate)
-        wf.writeframes(b''.join(frames))
-
-    print('Saved recording to:', file_path)
+    keyword = input('검색할 키워드를 입력하세요 (Enter로 생략): ')
+    if keyword:
+        search_keyword_in_csv(directory, keyword)
 
 
 if __name__ == '__main__':
-    record_audio()
+    main()
